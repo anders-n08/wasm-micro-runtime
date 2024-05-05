@@ -41,10 +41,16 @@ add_definitions(-DWASM_ENABLE_TAIL_CALL=1)
 add_definitions(-DWASM_ENABLE_SIMD=1)
 add_definitions(-DWASM_ENABLE_REF_TYPES=1)
 add_definitions(-DWASM_ENABLE_CUSTOM_NAME_SECTION=1)
+add_definitions(-DWASM_ENABLE_AOT_STACK_FRAME=1)
 add_definitions(-DWASM_ENABLE_DUMP_CALL_STACK=1)
 add_definitions(-DWASM_ENABLE_PERF_PROFILING=1)
 add_definitions(-DWASM_ENABLE_LOAD_CUSTOM_SECTION=1)
 add_definitions(-DWASM_ENABLE_MODULE_INST_CONTEXT=1)
+
+add_definitions(-DWASM_ENABLE_GC=1)
+
+set (WAMR_BUILD_STRINGREF 1)
+set (WAMR_STRINGREF_IMPL_SOURCE "STUB")
 
 if (WAMR_BUILD_LLVM_LEGACY_PM EQUAL 1)
   add_definitions(-DWASM_ENABLE_LLVM_LEGACY_PM=1)
@@ -59,30 +65,31 @@ if (DEFINED WAMR_BUILD_AOT_FUNC_PREFIX)
 endif ()
 
 if (NOT WAMR_BUILD_TARGET)
-  if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64")
+  string(TOLOWER "${CMAKE_HOST_SYSTEM_PROCESSOR}" HOST_SYSTEM_PROCESSOR)
+  if (${HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     set (WAMR_BUILD_TARGET "X86_64")
-  elseif (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "i686")
+  elseif (${HOST_SYSTEM_PROCESSOR} STREQUAL "i686")
     set (WAMR_BUILD_TARGET "X86_32")
-  elseif (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "amd64")
+  elseif (${HOST_SYSTEM_PROCESSOR} STREQUAL "amd64")
     set (WAMR_BUILD_TARGET "AMD_64")
-  elseif (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "aarch64"
-          OR CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+  elseif (${HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64"
+          OR ${HOST_SYSTEM_PROCESSOR} STREQUAL "arm64")
     set (WAMR_BUILD_TARGET "AARCH64")
-  elseif (CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm.*")
+  elseif (${HOST_SYSTEM_PROCESSOR} MATCHES "arm.*")
     message(STATUS "Assuming ${CMAKE_HOST_SYSTEM_PROCESSOR} as ARM_32")
     set (WAMR_BUILD_TARGET "ARM_32")
-  elseif (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "mips")
+  elseif (${HOST_SYSTEM_PROCESSOR} STREQUAL "mips")
     set (WAMR_BUILD_TARGET "MIPS_32")
-  elseif (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "xtensa")
+  elseif (${HOST_SYSTEM_PROCESSOR} STREQUAL "xtensa")
     set (WAMR_BUILD_TARGET "XTENSA_32")
-  elseif (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "riscv64")
+  elseif (${HOST_SYSTEM_PROCESSOR} STREQUAL "riscv64")
     set (WAMR_BUILD_TARGET "RISCV64")
-  elseif (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "riscv")
+  elseif (${HOST_SYSTEM_PROCESSOR} STREQUAL "riscv")
     message(STATUS "Assuming ${CMAKE_HOST_SYSTEM_PROCESSOR} as RISCV32")
     set (WAMR_BUILD_TARGET "RISCV32")
   else ()
     message (FATAL_ERROR "Unsupported CMAKE_HOST_SYSTEM_PROCESSOR "
-    "${CMAKE_HOST_SYSTEM_PROCESSOR}")
+	                 "${CMAKE_HOST_SYSTEM_PROCESSOR}")
   endif()
 
   if (WAMR_BUILD_PLATFORM STREQUAL "windows")
@@ -207,7 +214,6 @@ endif()
 
 set (SHARED_DIR ../core/shared)
 set (IWASM_DIR ../core/iwasm)
-set (APP_FRAMEWORK_DIR ../core/app-framework)
 
 include_directories (${SHARED_DIR}/include
                      ${IWASM_DIR}/include)
@@ -282,6 +288,7 @@ include (${SHARED_DIR}/utils/shared_utils.cmake)
 include (${SHARED_DIR}/utils/uncommon/shared_uncommon.cmake)
 include (${IWASM_DIR}/libraries/thread-mgr/thread_mgr.cmake)
 include (${IWASM_DIR}/common/iwasm_common.cmake)
+include (${IWASM_DIR}/common/gc/iwasm_gc.cmake)
 include (${IWASM_DIR}/interpreter/iwasm_interp.cmake)
 include (${IWASM_DIR}/aot/iwasm_aot.cmake)
 include (${IWASM_DIR}/compilation/iwasm_compl.cmake)
@@ -358,7 +365,8 @@ add_library (vmlib
              ${LIB_WASI_THREADS_SOURCE}
              ${IWASM_COMMON_SOURCE}
              ${IWASM_INTERP_SOURCE}
-             ${IWASM_AOT_SOURCE})
+             ${IWASM_AOT_SOURCE}
+             ${IWASM_GC_SOURCE})
 
 add_library (aotclib ${IWASM_COMPL_SOURCE})
 
